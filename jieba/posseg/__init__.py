@@ -105,18 +105,42 @@ class POSTokenizer(object):
         self.load_word_tag(self.tokenizer.get_abs_path_dict())
 
     def load_word_tag(self, f_name):
-        self.word_tag_tab = {}
-        with open(f_name, "rb") as f:
-            for lineno, line in enumerate(f, 1):
-                try:
-                    line = line.strip().decode("utf-8")
-                    if not line:
-                        continue
-                    word, _, tag = line.split(" ")
-                    self.word_tag_tab[word] = tag
-                except Exception:
-                    raise ValueError(
-                        'invalid POS dictionary entry in %s at Line %s: %s' % (f_name, lineno, line))
+        # print "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        cache_file = "jieba_posseg.cache"
+        # print self.tokenizer.tmp_dir
+        cache_file = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tmp'), cache_file)
+        # print cache_file
+
+        try:
+            with open(cache_file, 'rb') as cf:
+                self.word_tag_tab = marshal.load(cf)
+                # print "bbbbb"
+        except :
+            self.word_tag_tab = {}
+            print "cccccccccccccccccccccccccccccccccccccccccc"
+            print f_name
+
+            with open(f_name, "rb") as f:
+                for lineno, line in enumerate(f, 1):
+                    try:
+                        line = line.strip().decode("utf-8")
+                        if not line:
+                            continue
+                        # word, _, tag = line.split(" ")
+                        try:
+                            word, _, tag = line.split(" ")
+                            self.word_tag_tab[word] = tag
+                        except:
+                            word = line.split(" ")[0]
+                            self.word_tag_tab[word] = 'n'
+                    except Exception:
+                        raise ValueError(
+                            'invalid POS dictionary entry in %s at Line %s: %s' % (f_name, lineno, line))
+
+            with open(cache_file, 'wb') as temp_cache_file:
+                marshal.dump(self.word_tag_tab, temp_cache_file)
+            # print "ccccccc"
+
 
     def makesure_userdict_loaded(self):
         if self.tokenizer.user_word_tag_tab:

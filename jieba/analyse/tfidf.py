@@ -4,6 +4,7 @@ import os
 import jieba
 import jieba.posseg
 from operator import itemgetter
+import marshal
 
 _get_module_path = lambda path: os.path.normpath(os.path.join(os.getcwd(),
                                                  os.path.dirname(__file__), path))
@@ -42,15 +43,24 @@ class IDFLoader(object):
             self.set_new_path(idf_path)
 
     def set_new_path(self, new_idf_path):
-        if self.path != new_idf_path:
-            self.path = new_idf_path
-            content = open(new_idf_path, 'rb').read().decode('utf-8')
-            self.idf_freq = {}
-            for line in content.splitlines():
-                word, freq = line.strip().split(' ')
-                self.idf_freq[word] = float(freq)
-            self.median_idf = sorted(
-                self.idf_freq.values())[len(self.idf_freq) // 2]
+        cache_file = "jieba_idf.cache"
+        # print self.tokenizer.tmp_dir
+        cache_file = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tmp'), cache_file)
+        try:
+            with open(cache_file, 'rb') as cf:
+                self.idf_freq, self.median_idf = marshal.load(cf)
+        except :
+            if self.path != new_idf_path:
+                self.path = new_idf_path
+                content = open(new_idf_path, 'rb').read().decode('utf-8')
+                self.idf_freq = {}
+                for line in content.splitlines():
+                    word, freq = line.strip().split(' ')
+                    self.idf_freq[word] = float(freq)
+                self.median_idf = sorted(
+                    self.idf_freq.values())[len(self.idf_freq) // 2]
+            with open(cache_file, 'wb') as temp_cache_file:
+                marshal.dump((self.idf_freq, self.median_idf), temp_cache_file)
 
     def get_idf(self):
         return self.idf_freq, self.median_idf

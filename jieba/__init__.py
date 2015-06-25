@@ -84,74 +84,77 @@ class Tokenizer(object):
         return lfreq, ltotal
 
     def initialize(self, dictionary=None):
-        if dictionary:
-            abs_path = _get_abs_path(dictionary)
-            if self.dictionary == abs_path and self.initialized:
-                return
-            else:
-                self.dictionary = abs_path
-                self.initialized = False
-        else:
-            abs_path = self.dictionary
+        # if dictionary:
+        #     abs_path = _get_abs_path(dictionary)
+        #     if self.dictionary == abs_path and self.initialized:
+        #         return
+        #     else:
+        #         self.dictionary = abs_path
+        #         self.initialized = False
+        # else:
+        #     abs_path = self.dictionary
+        #
+        # with self.lock:
+        #     try:
+        #         with DICT_WRITING[abs_path]:
+        #             pass
+        #     except KeyError:
+        #         pass
+        #     if self.initialized:
+        #         return
 
-        with self.lock:
-            try:
-                with DICT_WRITING[abs_path]:
-                    pass
-            except KeyError:
-                pass
-            if self.initialized:
-                return
+        # default_logger.debug("Building prefix dict from %s ..." % abs_path)
+        t1 = time.time()
+        # if self.cache_file:
+        #     cache_file = self.cache_file
+        # default dictionary
+        # elif abs_path == DEFAULT_DICT:
+        cache_file = "jieba.cache"
+        # else:  # custom dictionary
+        #     cache_file = "jieba.u%s.cache" % md5(
+        #         abs_path.encode('utf-8', 'replace')).hexdigest()
+        cache_file = os.path.join(
+            self.tmp_dir or tempfile.gettempdir(), cache_file)
 
-            default_logger.debug("Building prefix dict from %s ..." % abs_path)
-            t1 = time.time()
-            if self.cache_file:
-                cache_file = self.cache_file
-            # default dictionary
-            elif abs_path == DEFAULT_DICT:
-                cache_file = "jieba.cache"
-            else:  # custom dictionary
-                cache_file = "jieba.u%s.cache" % md5(
-                    abs_path.encode('utf-8', 'replace')).hexdigest()
-            cache_file = os.path.join(
-                self.tmp_dir or tempfile.gettempdir(), cache_file)
+        # load_from_cache_fail = True
+        # if os.path.isfile(cache_file) and os.path.getmtime(cache_file) > os.path.getmtime(abs_path):
+        #     default_logger.debug(
+        #         "Loading model from cache %s" % cache_file)
+        # print cache_file
+        try:
+            with open(cache_file, 'rb') as cf:
+                self.FREQ, self.total = marshal.load(cf)
+            # load_from_cache_fail = False
+        except Exception as e:
+            default_logger.error(" %s" % e)
 
-            load_from_cache_fail = True
-            if os.path.isfile(cache_file) and os.path.getmtime(cache_file) > os.path.getmtime(abs_path):
-                default_logger.debug(
-                    "Loading model from cache %s" % cache_file)
-                try:
-                    with open(cache_file, 'rb') as cf:
-                        self.FREQ, self.total = marshal.load(cf)
-                    load_from_cache_fail = False
-                except Exception:
-                    load_from_cache_fail = True
+            # load_from_cache_fail = True
 
-            if load_from_cache_fail:
-                wlock = DICT_WRITING.get(abs_path, threading.RLock())
-                DICT_WRITING[abs_path] = wlock
-                with wlock:
-                    self.FREQ, self.total = self.gen_pfdict(abs_path)
-                    default_logger.debug(
-                        "Dumping model to file cache %s" % cache_file)
-                    try:
-                        fd, fpath = tempfile.mkstemp()
-                        with os.fdopen(fd, 'wb') as temp_cache_file:
-                            marshal.dump(
-                                (self.FREQ, self.total), temp_cache_file)
-                        _replace_file(fpath, cache_file)
-                    except Exception:
-                        default_logger.exception("Dump cache file failed.")
+        # if load_from_cache_fail:
+        #     wlock = DICT_WRITING.get(abs_path, threading.RLock())
+        #     DICT_WRITING[abs_path] = wlock
+        #     with wlock:
+        #         self.FREQ, self.total = self.gen_pfdict(abs_path)
+        #         default_logger.debug(
+        #             "Dumping model to file cache %s" % cache_file)
+        #         try:
+        #             fd, fpath = tempfile.mkstemp()
+        #             with os.fdopen(fd, 'wb') as temp_cache_file:
+        #                 marshal.dump(
+        #                     (self.FREQ, self.total), temp_cache_file)
+        #             _replace_file(fpath, cache_file)
+        #         except Exception:
+        #             default_logger.exception("Dump cache file failed.")
+        #
+        #     try:
+        #         del DICT_WRITING[abs_path]
+        #     except KeyError:
+        #         pass
 
-                try:
-                    del DICT_WRITING[abs_path]
-                except KeyError:
-                    pass
-
-            self.initialized = True
-            default_logger.debug(
-                "Loading model cost %.3f seconds." % (time.time() - t1))
-            default_logger.debug("Prefix dict has been built succesfully.")
+        self.initialized = True
+        default_logger.debug(
+            "Loading model cost %.3f seconds." % (time.time() - t1))
+        default_logger.debug("Prefix dict has been built succesfully.")
 
     def check_initialized(self):
         if not self.initialized:

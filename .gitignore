@@ -6,8 +6,6 @@
 .project
 .metadata
 bin/
-tmp/
-*.tmp
 *.bak
 *.swp
 *~.nib
@@ -170,3 +168,4 @@ test/tmp/*
 *.class
 
 MANIFEST
+test.py
